@@ -708,6 +708,9 @@ input[type=range]{width:100%;accent-color:var(--ours)}
       <div><div class="cs" style="margin-bottom:4px"><b>Prosjek po vrsti dana:</b> stvarni pad, prognozirani pad i pad da je klasifikator bio siguran.</div>
         <div class="svgbox"><div id="c-cut-bar"></div></div></div>
     </div>
+    <div style="margin-top:14px"><div class="head"><div class="cs" style="margin:0"><b>Po satu:</b> koliki je udio proizvodnje stvarno isključen u svakom satu dana s gašenjem i koliko je od toga uhvatio korak gašenja. Prijeđi mišem za postotak uhvaćenog.</div><div class="ctrl" id="cut-hsel"></div></div>
+      <div class="svgbox"><div id="c-cut-hour"></div></div>
+      <p class="note" style="margin-top:6px">Na svim danima s gašenjem u podne (12–14 h) stvarno je isključeno 24–26 % proizvodnje, a korak gašenja spusti prognozu za 17–19 %, dakle uhvati oko 70 %. Kad klasifikator <b>pogodi</b> dan, u podne reže previše (25–29 % prema 17–19 %), a u 16 h premalo (5 % prema 11 %): stvarno gašenje traje dulje u popodne nego što pretpostavlja omjer po satu. Kad <b>promaši</b>, u podne je isključeno 34–36 %, a mi spustimo samo 4–5 %; uz <em>p</em> = 1 bilo bi 27–31 %. Sati 7–17; ranije i kasnije proizvodnja je premala za smislen omjer.</p></div>
     <p class="note"><strong>Zaključak:</strong> kad klasifikator <b>pogodi</b> gašenje (73 dana), prosječno spusti prognozu za 20 %, a stvarni pad je 15 %: reže malo previše, a u test-godini osjetno više (22 % prema 9 %). Kad <b>promaši</b> (42 dana), stvarni pad je 27 %, a mi spustimo samo 3 %; da je bio siguran, rez bi bio 22 %, blizu stvarnog. Na <b>lažnim uzbunama</b> (11 dana) prognoza je već i prije reza bila 19 % preniska, pa rez od 20 % grešku udvostruči. Dan-po-dan raspršenje je veliko jer i na običnim danima podnevna prognoza odstupa ±17 %. Napomena: model prije reza dijelom je već naučio gašenje iz povijesti, pa je stvarni pad nešto veći od prikazanog.</p>
   </div>
 
@@ -1417,6 +1420,29 @@ function drawCutBar(){
   SER.forEach(([, c, n], i) => { const lx = left + 8 + i * 135, ly = h - 10; el('rect', {x: lx, y: ly - 6, width: 12, height: 10, rx: 2, fill: css(c)}, s); txt(s, lx + 17, ly + 3, n, 'lbl'); });
 }
 DRAW.push(drawClfWork, drawCutSc, drawCutBar);
+const CUTH = {"all": [[7, 0.029, 0.037, 0.051, 0.0, 115], [8, 0.028, 0.012, 0.02, 0.07, 115], [9, 0.02, 0.008, 0.014, 0.139, 115], [10, 0.076, 0.039, 0.068, 0.4, 115], [11, 0.171, 0.126, 0.21, 0.67, 115], [12, 0.242, 0.166, 0.272, 0.817, 115], [13, 0.263, 0.181, 0.301, 0.922, 115], [14, 0.248, 0.188, 0.313, 0.852, 115], [15, 0.168, 0.155, 0.258, 0.583, 115], [16, 0.079, 0.033, 0.055, 0.287, 115], [17, 0.014, 0.03, 0.044, 0.009, 115]], "hit": [[7, 0.02, 0.049, 0.054, 0.0, 73], [8, 0.033, 0.016, 0.018, 0.096, 73], [9, 0.031, 0.011, 0.012, 0.205, 73], [10, 0.073, 0.056, 0.063, 0.507, 73], [11, 0.15, 0.188, 0.207, 0.767, 73], [12, 0.175, 0.25, 0.275, 0.808, 73], [13, 0.193, 0.276, 0.303, 0.945, 73], [14, 0.174, 0.286, 0.315, 0.877, 73], [15, 0.144, 0.231, 0.253, 0.699, 73], [16, 0.106, 0.046, 0.05, 0.397, 73], [17, 0.024, 0.041, 0.044, 0.0, 73]], "miss": [[7, 0.051, 0.005, 0.042, 0.0, 42], [8, 0.019, 0.003, 0.024, 0.024, 42], [9, -0.002, 0.002, 0.017, 0.024, 42], [10, 0.081, 0.011, 0.076, 0.214, 42], [11, 0.203, 0.033, 0.214, 0.5, 42], [12, 0.341, 0.041, 0.268, 0.833, 42], [13, 0.364, 0.046, 0.299, 0.881, 42], [14, 0.355, 0.047, 0.31, 0.81, 42], [15, 0.204, 0.037, 0.264, 0.381, 42], [16, 0.031, 0.009, 0.064, 0.095, 42], [17, -0.006, 0.006, 0.042, 0.024, 42]]};
+let cutHK = 'all';
+function drawCutHour(){
+  const rows = CUTH[cutHK], h = 300, top = 14, bottom = 56, left = 44, right = 14; const [s, w] = svgIn('c-cut-hour', h);
+  const x = scale(7, 17, left + 10, w - right - 10), y = scale(-.05, .4, h - bottom, top);
+  [0, .1, .2, .3, .4].forEach(t => { el('line', {x1: left, x2: w - right, y1: y(t), y2: y(t), stroke: t === 0 ? css('--ink') : css('--grid')}, s); txt(s, left - 6, y(t) + 4, fmt(t * 100, 0) + ' %', 'ax', 'end'); });
+  rows.forEach(r => txt(s, x(r[0]), h - bottom + 16, r[0] + ' h', 'ax', 'middle'));
+  const SER = [[1, '--ref', 'stvarno isključeno'], [2, '--ours', 'naš rez (korak gašenja)'], [3, '--band', 'rez da je klasifikator siguran']];
+  SER.forEach(([j, c], si) => { el('path', {d: rows.map((r, i) => (i ? 'L' : 'M') + x(r[0]) + ',' + y(r[j])).join(''), fill: 'none', stroke: css(c), 'stroke-width': si === 2 ? 1.8 : 2.4, 'stroke-dasharray': si === 2 ? '5 4' : '', 'stroke-linejoin': 'round'}, s);
+    rows.forEach(r => el('circle', {cx: x(r[0]), cy: y(r[j]), r: si === 2 ? 2.5 : 3.5, fill: css(c)}, s)); });
+  SER.forEach(([, c, n], i) => { const lx = left + 8 + i * 190, ly = h - 14; el('line', {x1: lx, x2: lx + 16, y1: ly, y2: ly, stroke: css(c), 'stroke-width': 2.4, 'stroke-dasharray': i === 2 ? '5 4' : ''}, s); txt(s, lx + 22, ly + 4, n, 'lbl'); });
+  const cross = el('line', {x1: 0, x2: 0, y1: top, y2: h - bottom, stroke: css('--muted'), opacity: 0}, s);
+  const hit = el('rect', {x: left, y: top, width: w - left - right, height: h - top - bottom, fill: 'transparent'}, s);
+  hit.addEventListener('mousemove', e => { const b = s.getBoundingClientRect(); const px = (e.clientX - b.left) * (w / b.width); const r = rows.reduce((a, q) => Math.abs(x(q[0]) - px) < Math.abs(x(a[0]) - px) ? q : a);
+    cross.setAttribute('x1', x(r[0])); cross.setAttribute('x2', x(r[0])); cross.setAttribute('opacity', 1);
+    const cap = r[1] > .03 ? fmt(Math.max(0, r[2]) / r[1] * 100, 0) + ' %' : '–';
+    showTip(e, `<b>${r[0]}–${r[0] + 1} h</b> · ${r[5]} dana<br>stvarno isključeno ${fmt(r[1] * 100, 1)} %<br>naš rez ${fmt(r[2] * 100, 1)} % (uhvaćeno ${cap})<br>da je siguran ${fmt(r[3] * 100, 1)} %<br>sati s cijenom ≤ 0: ${fmt(r[4] * 100, 0)} %`); });
+  hit.addEventListener('mouseleave', () => { cross.setAttribute('opacity', 0); hideTip(); });
+}
+(function(){ const box = document.getElementById('cut-hsel'); if (!box) return; const bs = [];
+  [['all', 'svi dani s gašenjem'], ['hit', 'uhvaćeni'], ['miss', 'promašeni']].forEach(([k, n]) => { const b = presetBtn(box, n, () => { cutHK = k; bs.forEach(q => q.setAttribute('aria-pressed', q === b)); drawCutHour(); }); b.setAttribute('aria-pressed', k === 'all'); bs.push(b); }); })();
+DRAW.push(drawCutHour);
+
 
 
 const WD = {"national": [["pon", 50, 3.098, -0.915, false, 2.1], ["uto", 50, 2.964, 0.175, false, 2.452], ["sri", 52, 2.916, -0.618, false, 2.284], ["čet", 49, 3.179, 0.433, false, 2.575], ["pet", 50, 3.193, -0.322, false, 2.601], ["sub", 49, 3.789, -0.852, false, 2.474], ["ned", 51, 4.989, -1.58, true, 2.049], ["blagdan", 14, 4.052, -0.343, false, 3.326]], "zuvela": [["pon", 47, 4.4, 0.726, false, null], ["uto", 48, 4.13, 0.242, false, null], ["sri", 48, 4.887, 1.001, false, null], ["čet", 48, 4.569, 1.291, false, null], ["pet", 48, 4.515, 0.683, false, null], ["sub", 46, 3.865, 0.247, false, null], ["ned", 48, 3.832, 0.596, false, null], ["blagdan", 12, 2.324, 0.199, true, null]], "inkop": [["pon", 33, 4.871, 1.372, false, null], ["uto", 33, 5.291, 0.655, false, null], ["sri", 33, 5.731, 0.364, false, null], ["čet", 33, 5.436, 1.098, false, null], ["pet", 34, 5.32, 1.111, false, null], ["sub", 33, 5.23, 0.649, false, null], ["ned", 34, 4.065, 0.055, false, null], ["blagdan", 10, 3.446, -0.498, true, null]], "mean": {"national": 3.47, "zuvela": 4.246, "inkop": 5.062}};
