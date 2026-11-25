@@ -26,6 +26,8 @@
 .themebtn{margin-left:auto;align-self:center;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 14px;font:600 13px var(--body);cursor:pointer}
 .themebtn:hover{border-color:var(--ours)}
 [hidden]{display:none!important}
+.clf-tile{flex:1 1 180px;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;background:var(--surface)}.clf-tile .v{font-family:var(--display);font-size:26px;font-weight:700;color:var(--ink)}.clf-tile .l{font-size:13px;color:var(--ink-2);line-height:1.35}
+
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--body);margin:0}
 .wrap{max-width:1000px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
@@ -677,6 +679,24 @@ input[type=range]{width:100%;accent-color:var(--ours)}
       <tr><td><b>Vikend</b></td><td><b style="color:var(--hops)">−5,9</b> (44 dana) · rezali smo, a gašenja nije bilo</td><td>+0,7 (35 dana) · u redu</td></tr></table>
     <p class="note"><strong>Zaključak:</strong> u test-godini vedrim vikendom bez negativne cijene prognoza je oko 6 bodova preniska (srezali smo bez potrebe), a rijetka gašenja radnim danom promašimo.</p>
   </details>
+  <div class="chart" id="clf-box">
+    <div class="ct">Koliko je točan klasifikator gašenja</div>
+    <div class="cs">Klasifikator u 10 h dan prije daje vjerojatnost <em>p</em> da će podnevna cijena dana D pasti na ≤ 0 €/MWh. Ovdje je <em>p</em> uspoređen sa stvarnim ishodom, dan po dan (1/2025.–9/2026., van uzorka: svaki mjesec klasifikator uči samo na danima prije njega). „Uzbuna“ = <em>p</em> ≥ 0,5.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 4px">
+      <div class="clf-tile"><div class="v">0,96</div><div class="l">AUC na test-godini (1 = savršeno razdvaja dane s gašenjem i bez)</div></div>
+      <div class="clf-tile"><div class="v">80 %</div><div class="l">uzbuna koje su bile točne (35 od 44; 9 lažnih)</div></div>
+      <div class="clf-tile"><div class="v">82 %</div><div class="l">uhvaćenih gašenja <b>vikendom i blagdanom</b> (32 od 39)</div></div>
+      <div class="clf-tile"><div class="v">27 %</div><div class="l">uhvaćenih gašenja <b>radnim danom</b> (3 od 11; u 2025. 0 od 14)</div></div>
+    </div>
+    <div class="two" style="margin-top:6px">
+      <div><div class="cs" style="margin-bottom:4px"><b>Kalibracija:</b> kad klasifikator kaže <em>p</em>, koliki se udio tih dana stvarno gasio? Točka na dijagonali = točna vjerojatnost; iznad = podcjenjuje, ispod = precjenjuje. Kvadrat: slobodan dan, krug: radni dan. Prikazani su razredi s barem 5 dana.</div>
+        <div class="svgbox"><div id="c-clf-rel"></div></div></div>
+      <div><div class="cs" style="margin-bottom:4px"><b>Po mjesecima:</b> prosječni <em>p</em> prema udjelu dana s gašenjem. Desno od crte je test-godina.</div>
+        <div class="svgbox"><div id="c-clf-mon"></div></div></div>
+    </div>
+    <p class="note"><strong>Zaključak:</strong> klasifikator dobro razdvaja dane (AUC 0,94 na mjesecima 2025., 0,96 na test-godini), a vikendom je i dobro kalibriran: od 39 gašenja vikendom i blagdanom uhvati 32, uz 9 lažnih uzbuna. Slaba točka su <b>radni dani</b>: tamo gotovo uvijek kaže <em>p</em> ≈ 0, a gašenje se ipak dogodi u oko 4 % takvih dana, pa promaši 8 od 11 (u 2025. svih 14). Po mjesecima podcjenjuje proljeće (travanj obje godine: <em>p</em> oko 0,2–0,3, a gasilo se pola dana) i blago precjenjuje ljeto 2026. Koliko to košta: da je klasifikator savršen, greška bi pala samo oko 0,2 boda (decision log HJ); veći dio greške na danima s gašenjem je u dubini reza, ne u ovoj odluci.</p>
+  </div>
+
   
   <div class="next"><div class="ic">→</div><div><div class="k">Mogući sljedeći koraci</div><h3>Što iz dijagnostike vrijedi napraviti</h3>
     <ul style="margin:6px 0 10px;padding-left:20px;color:var(--ink-2);font-size:15px;line-height:1.5">
@@ -1297,6 +1317,46 @@ function drawDgPairs(id, rows, extra){
 }
 DRAW.push(drawDgDay, () => drawDgPairs('c-dg-cloud', DG3.C), () => drawDgPairs('c-dg-dtype', DG3.T, r => fmt(r[4], 0) + ' % sati ≤ 0'));
 DRAW.push(drawDgScatter, () => drawDgHist(), drawDgHour);
+const CLF = {"rel": [["free", "0.0–0.1", 87, 0.007, 0.08], ["free", "0.1–0.2", 10, 0.155, 0.3], ["free", "0.2–0.4", 15, 0.276, 0.333], ["free", "0.4–0.6", 9, 0.476, 0.667], ["free", "0.6–0.8", 10, 0.699, 0.7], ["free", "0.8–1.0", 69, 0.956, 0.899], ["work", "0.0–0.1", 421, 0.006, 0.04], ["work", "0.1–0.2", 7, 0.143, 0.286], ["work", "0.2–0.4", 5, 0.26, 0.2], ["work", "0.4–0.6", 4, 0.493, 1.0], ["work", "0.8–1.0", 1, 0.931, 1.0]], "mon": [["2025-01", 0.0, 0.0, 0, 0, 0, 31], ["2025-02", 0.0, 0.0, 0, 0, 0, 28], ["2025-03", 0.055, 0.065, 2, 0, 1, 31], ["2025-04", 0.217, 0.5, 15, 0, 9, 30], ["2025-05", 0.35, 0.355, 11, 1, 2, 31], ["2025-06", 0.294, 0.3, 9, 0, 1, 30], ["2025-07", 0.143, 0.161, 5, 1, 2, 31], ["2025-08", 0.278, 0.484, 15, 0, 7, 31], ["2025-09", 0.135, 0.267, 8, 0, 5, 30], ["2025-10", 0.035, 0.0, 0, 1, 0, 31], ["2025-11", 0.001, 0.0, 0, 0, 0, 30], ["2025-12", 0.0, 0.0, 0, 0, 0, 31], ["2026-01", 0.0, 0.0, 0, 0, 0, 31], ["2026-02", 0.008, 0.036, 1, 0, 1, 28], ["2026-03", 0.148, 0.194, 6, 1, 2, 31], ["2026-04", 0.326, 0.567, 17, 0, 8, 30], ["2026-05", 0.334, 0.29, 9, 1, 0, 31], ["2026-06", 0.254, 0.2, 6, 2, 0, 30], ["2026-07", 0.182, 0.194, 6, 0, 0, 31], ["2026-08", 0.131, 0.065, 2, 3, 2, 31], ["2026-09", 0.088, 0.1, 3, 1, 2, 30]]};
+function drawClfRel(){
+  const h = 300, top = 14, bottom = 40, left = 44, right = 14; const [s, w] = svgIn('c-clf-rel', h);
+  const x = scale(0, 1, left, w - right), y = scale(0, 1, h - bottom, top);
+  [0, .2, .4, .6, .8, 1].forEach(t => { el('line', {x1: x(t), x2: x(t), y1: top, y2: h - bottom, stroke: css('--grid')}, s); txt(s, x(t), h - bottom + 16, fmt(t, 1), 'ax', 'middle');
+    el('line', {x1: left, x2: w - right, y1: y(t), y2: y(t), stroke: css('--grid')}, s); txt(s, left - 6, y(t) + 4, fmt(t * 100, 0) + ' %', 'ax', 'end'); });
+  txt(s, (left + w - right) / 2, h - 6, 'vjerojatnost p klasifikatora', 'ax', 'middle');
+  el('line', {x1: x(0), y1: y(0), x2: x(1), y2: y(1), stroke: css('--muted'), 'stroke-dasharray': '4 4'}, s);
+  [['work', '--ours', 'radni dan'], ['free', '--v2', 'slobodan dan']].forEach(([k, c, name]) => {
+    const pts = CLF.rel.filter(r => r[0] === k && r[2] >= 5);
+    el('path', {d: pts.map((r, i) => (i ? 'L' : 'M') + x(r[3]) + ',' + y(r[4])).join(''), fill: 'none', stroke: css(c), 'stroke-width': 2, opacity: .55}, s);
+    pts.forEach(r => { const px = x(r[3]), py = y(r[4]);
+      const m = k === 'free' ? el('rect', {x: px - 5, y: py - 5, width: 10, height: 10, rx: 2, fill: css(c), stroke: css('--surface'), 'stroke-width': 2}, s)
+                             : el('circle', {cx: px, cy: py, r: 5.5, fill: css(c), stroke: css('--surface'), 'stroke-width': 2}, s);
+      const hit = el('circle', {cx: px, cy: py, r: 12, fill: 'transparent'}, s);
+      hover(hit, `<b>${name}</b>, p ${r[1]}<br>${r[2]} dana · prosječni p ${fmt(r[3], 2)}<br>stvarno se gasilo: ${fmt(r[4] * 100, 0)} % dana`); }); });
+  const lg = top + 6; [['--ours', 'radni dan', false], ['--v2', 'slobodan dan', true]].forEach(([c, n, sq], i) => { const ly = lg + i * 18;
+    if (sq) el('rect', {x: left + 8, y: ly - 5, width: 10, height: 10, rx: 2, fill: css(c)}, s); else el('circle', {cx: left + 13, cy: ly, r: 5, fill: css(c)}, s);
+    txt(s, left + 24, ly + 4, n, 'lbl'); });
+}
+function drawClfMon(){
+  const rows = CLF.mon, h = 320, top = 14, bottom = 60, left = 44, right = 14; const [s, w] = svgIn('c-clf-mon', h);
+  const x = scale(0, rows.length - 1, left + 6, w - right - 6), y = scale(0, .6, h - bottom, top);
+  [0, .1, .2, .3, .4, .5, .6].forEach(t => { el('line', {x1: left, x2: w - right, y1: y(t), y2: y(t), stroke: css('--grid')}, s); txt(s, left - 6, y(t) + 4, fmt(t * 100, 0) + ' %', 'ax', 'end'); });
+  rows.forEach((r, i) => { if (i % 3 === 0) txt(s, x(i), h - bottom + 16, monLab(r[0], true), 'ax', 'middle'); });
+  const ti = rows.findIndex(r => r[0] === '2025-10'); const bx = (x(ti) + x(ti - 1)) / 2;
+  el('line', {x1: bx, x2: bx, y1: top, y2: h - bottom, stroke: css('--ink'), 'stroke-dasharray': '3 3'}, s); txt(s, bx + 4, top + 10, 'test-godina →', 'ax');
+  [[2, '--ref', 'udio dana s gašenjem'], [1, '--ours', 'prosječni p']].forEach(([j, c, n]) => {
+    el('path', {d: rows.map((r, i) => (i ? 'L' : 'M') + x(i) + ',' + y(r[j])).join(''), fill: 'none', stroke: css(c), 'stroke-width': 2.2, 'stroke-linejoin': 'round'}, s);
+    rows.forEach((r, i) => el('circle', {cx: x(i), cy: y(r[j]), r: 3, fill: css(c)}, s)); });
+  [['--ours', 'prosječni p'], ['--ref', 'udio dana s gašenjem']].forEach(([c, n], i) => { const lx = left + 8 + i * 140, ly = h - 12; el('line', {x1: lx, x2: lx + 14, y1: ly, y2: ly, stroke: css(c), 'stroke-width': 2.4}, s); txt(s, lx + 20, ly + 4, n, 'lbl'); });
+  const cross = el('line', {x1: 0, x2: 0, y1: top, y2: h - bottom, stroke: css('--muted'), opacity: 0}, s);
+  const hit = el('rect', {x: left, y: top, width: w - left - right, height: h - top - bottom, fill: 'transparent'}, s);
+  hit.addEventListener('mousemove', e => { const b = s.getBoundingClientRect(); const px = (e.clientX - b.left) * (w / b.width); const i = Math.max(0, Math.min(rows.length - 1, Math.round((px - x(0)) / (x(1) - x(0))))); const r = rows[i];
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
+    showTip(e, `<b>${monLab(r[0], true)}</b><br>prosječni p ${fmt(r[1], 2)}<br>gašenje ${r[3]} od ${r[6]} dana (${fmt(r[2] * 100, 0)} %)<br>lažne uzbune ${r[4]} · promašena gašenja ${r[5]}`); });
+  hit.addEventListener('mouseleave', () => { cross.setAttribute('opacity', 0); hideTip(); });
+}
+DRAW.push(drawClfRel, drawClfMon);
+
 const WD = {"national": [["pon", 50, 3.098, -0.915, false, 2.1], ["uto", 50, 2.964, 0.175, false, 2.452], ["sri", 52, 2.916, -0.618, false, 2.284], ["čet", 49, 3.179, 0.433, false, 2.575], ["pet", 50, 3.193, -0.322, false, 2.601], ["sub", 49, 3.789, -0.852, false, 2.474], ["ned", 51, 4.989, -1.58, true, 2.049], ["blagdan", 14, 4.052, -0.343, false, 3.326]], "zuvela": [["pon", 47, 4.4, 0.726, false, null], ["uto", 48, 4.13, 0.242, false, null], ["sri", 48, 4.887, 1.001, false, null], ["čet", 48, 4.569, 1.291, false, null], ["pet", 48, 4.515, 0.683, false, null], ["sub", 46, 3.865, 0.247, false, null], ["ned", 48, 3.832, 0.596, false, null], ["blagdan", 12, 2.324, 0.199, true, null]], "inkop": [["pon", 33, 4.871, 1.372, false, null], ["uto", 33, 5.291, 0.655, false, null], ["sri", 33, 5.731, 0.364, false, null], ["čet", 33, 5.436, 1.098, false, null], ["pet", 34, 5.32, 1.111, false, null], ["sub", 33, 5.23, 0.649, false, null], ["ned", 34, 4.065, 0.055, false, null], ["blagdan", 10, 3.446, -0.498, true, null]], "mean": {"national": 3.47, "zuvela": 4.246, "inkop": 5.062}};
 const WDTXT = {
  national: ['Hrvatska · recept · test-godina', 'Plavo: mi, <b style="color:var(--hops)">narančasto</b>: HOPS; crtkano: naš prosjek 3,47 %. Blagdani su izdvojeni. * = razlika prema ostalim danima izvan šuma (95 % interval).',
