@@ -279,7 +279,7 @@ input[type=range]{width:100%;accent-color:var(--ours)}
   <div class="body" id="drawer-body"></div>
 </aside>
 <div class="wrap">
-<nav class="tabs" role="tablist"><button type="button" role="tab" data-tab="uvod" aria-selected="true">Projekt</button><button type="button" role="tab" data-tab="rez" aria-selected="false">Rezultati</button><button type="button" role="tab" data-tab="met" aria-selected="false">Metode i značajke</button><button type="button" role="tab" data-tab="dij" aria-selected="false">Dijagnostika</button><button type="button" role="tab" data-tab="lit" aria-selected="false">Literatura</button><button type="button" class="themebtn" id="themebtn" aria-label="Svijetla ili tamna tema">☾ Tamno</button></nav>
+<nav class="tabs" role="tablist"><button type="button" role="tab" data-tab="uvod" aria-selected="true">Projekt</button><button type="button" role="tab" data-tab="rez" aria-selected="false">Rezultati</button><button type="button" role="tab" data-tab="met" aria-selected="false">Metode i značajke</button><button type="button" role="tab" data-tab="klf" aria-selected="false">Klasifikator</button><button type="button" role="tab" data-tab="dij" aria-selected="false">Dijagnostika</button><button type="button" role="tab" data-tab="lit" aria-selected="false">Literatura</button><button type="button" class="themebtn" id="themebtn" aria-label="Svijetla ili tamna tema">☾ Tamno</button></nav>
 <div id="tab-uvod" role="tabpanel">
 <section id="uvod" data-nav="Projekt">
   <div class="eyebrow">FER · Projekt Solari · u suradnji s Multicomom</div>
@@ -602,6 +602,69 @@ input[type=range]{width:100%;accent-color:var(--ours)}
 <p class="note" style="margin-top:28px;padding-top:12px;border-top:1px solid var(--rule)"><strong>Završeno (11. 11. 2026.):</strong> doučavanje Chronos-2 i podešavanje GRU-a, TFT-a, TimesFM-a i Timestrala. Hrvatska ostaje na receptu (3,47 %); za Žuvelu je prosjek LightGBM-a i Timestrala 4,25 % prema 4,45 % na test-godini.</p>
 </div>
 
+<div id="tab-klf" role="tabpanel" hidden>
+<section id="klasifikator" data-nav="Klasifikator">
+  <div class="eyebrow">Klasifikator gašenja</div>
+  <h2>Kako klasifikator odlučuje koliko srezati podne</h2>
+  <p class="lede" style="font-size:18px">Kad je podnevna cijena na burzi nula ili negativna, dio elektrana se gasi i proizvodnja padne. U 10 h dan prije (D−1) klasifikator procjenjuje vjerojatnost <b>p</b> da će se to dogoditi sutra (dan D). Model zatim srezuje prognozu podneva razmjerno toj vjerojatnosti.</p>
+
+  <div class="flow" style="margin-top:4px"><span>Ulazi poznati u 10 h D−1</span><b>→</b><span>LightGBM klasifikator</span><b>→</b><span>p = vjerojatnost gašenja dana D</span><b>→</b><span>rez po satu = p · (1 − r)</span><b>→</b><span>prognoza = baza · (1 − p · (1 − r))</span></div>
+
+  <div class="chart">
+    <div class="ct">1. Što točno predviđa</div>
+    <p>Jedan broj za cijeli dan D: vjerojatnost da najniža hrvatska day-ahead cijena (zona HR, CROPEX) u satima <b>10–15 h</b> bude <b>≤ 0 €/MWh</b>. Tada se gase elektrane koje prodaju na tržištu, a u ENTSO-E „stvarnoj” proizvodnji to se vidi kao pad podneva (planovi proizvođača nakon aukcije). Na test-godini (10/2025–9/2026) takvih je dana bilo <b>50 od 365</b> (14 %). Od toga je <b>39</b> palo na vikend ili praznik, a <b>11</b> na radni dan.</p>
+  </div>
+
+  <div class="chart">
+    <div class="ct">2. Ulazi: sve što je poznato u 10 h dan prije</div>
+    <div class="cs">Ukupno 24 ulaza, po jedan redak za svaki dan. Vrijeme je prosjek prognoze za podne dana D; ništa izmjereno na dan D.</div>
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px">
+      <div class="card"><div class="n">TRŽIŠTE · 6</div><p>Cijene <b>za</b> današnji dan D−1, određene na jučerašnjoj aukciji (D−2, objava oko 13 h), dakle poznate u 10 h: najniža i prosječna u 10–15 h, broj sati ≤ 0, prosjek dana. Najniža podnevna cijena za D−2. Niz uzastopnih dana s negativnim podnevom do D−1 (najviše 14). Cijene za D objavljuju se tek oko 13 h na D−1 i ne koriste se. Samo hrvatska zona: cijene SI, HU, AT, DE i IT-sjever probane su (AUC 0,928 sa susjedima, 0,936 bez njih) i ne pomažu, jer je aukcija zajednička i HR cijena već nosi stanje regije.</p></div>
+      <div class="card"><div class="n">KALENDAR · 5</div><p>Subota/nedjelja, hrvatski praznik, slobodan dan, dan u tjednu (sin, cos).</p></div>
+      <div class="card"><div class="n">SUSJEDI · 6</div><p>Praznik u Austriji, Njemačkoj, Italiji, Sloveniji, Mađarskoj i njihov broj: tada je potrošnja u regiji niska, a cijene padaju.</p></div>
+      <div class="card"><div class="n">VRIJEME U PODNE · 5</div><p>Prosjek prognoze ECMWF IFS HRES 9 km za 10–15 h dana D: indeks vedrine, zračenje, naoblaka, vjetar na 10 m, temperatura. Uvijek točno run 00 UTC na D−1 (arhiva Open-Meteo Single Runs, objava oko 06:50 UTC, dakle prije 10 h); kasniji run ni izmjereno vrijeme ne ulaze.</p></div>
+      <div class="card"><div class="n">SEZONA · 2</div><p>Dan u godini (sin, cos): proljeće s puno sunca, hidrologije i niske potrošnje nosi većinu dana gašenja.</p></div>
+    </div>
+  </div>
+
+  <div class="chart">
+    <div class="ct">3. Kako uči</div>
+    <p>Za svaki mjesec trenira se novi model, samo na danima <b>prije</b> tog mjeseca: model nikad ne vidi mjesec koji predviđa. Model je LightGBM s 300 stabala (stopa učenja 0,03, 15 listova). Trenira se tek kad postoji barem 28 ranijih dana s barem 3 dana gašenja i 3 dana bez njega. Dani kojima nedostaje više od pola ulaza se preskaču.</p>
+    <p class="note">LightGBM je izabran jer daje bolje kalibrirane vjerojatnosti od logističke regresije s istim ulazima (preklopi 2026-10-20: 4,286 % prema 4,418 % nMAE). Probane inačice s regionalnim vremenom, hidrologijom, posebnim danima, regionalnim „pritiskom” sunca, satnim klasifikatorom i pragom ≤ 20 €/MWh nisu prošle pravilo.</p>
+  </div>
+
+  <div class="chart">
+    <div class="ct">4. Od vjerojatnosti do reza: koliko od baze ostaje na dan gašenja (r po satu)</div>
+    <div class="cs">r je medijan omjera <i>stvarno / baza</i> po satu na danima kada se gasilo, iz zadnjih 365 dana učenja. Baza je prognoza bez reza; za ovaj omjer računa se izvan uzorka, u 3 preklopa. Donja granica je 0,3. Sat s manje od 30 takvih redaka dobiva r = 1 (ne reže se). Stupci prikazuju medijan mjesečnih r-ova na test-godini, kao prosjek tri člana; prijeđi mišem za svakog člana.</div>
+    <div class="svgbox"><div id="c-klf-r"></div></div>
+    <p class="note">Usred dana od baze ostaje oko 68 %, pa je puni rez oko 32 %. U 7 h r = 0,92: odatle mali rez u ranim satima koji se vidi u dijagnostici (ljubičasti sati na grafu dan × sat).</p>
+  </div>
+
+  <div class="chart">
+    <div class="ct">5. Primjer: isti dan uz različit p</div>
+    <div class="cs">Baza je prosjek tri člana na 35 dana test-godine s p &gt; 0,8, u postotku kapaciteta. Pomakni p i gledaj kako se podne spušta. Rez je p · (1 − r), pa uz p = 0,5 režemo pola punog reza.</div>
+    <div class="ctrl"><label for="klf-p" style="font-weight:600">p =</label><input id="klf-p" type="range" min="0" max="1" step="0.05" value="0.9" style="width:220px"><span id="klf-pv" style="font-family:var(--mono)">0,90</span><span id="klf-read" class="note" style="margin-left:8px"></span></div>
+    <div class="svgbox"><div id="c-klf-demo"></div></div>
+    <p class="note">Baza na tim danima već i sama spušta podne: p je i jedna od značajki osnovnog modela (blok curtail_risk), a cilj za učenje sadrži prošla gašenja. Rez se dodaje na to. Isti p koriste ET, LightGBM i ElasticNet, svaki sa svojom bazom i svojim r. Chronos-2 nema ovaj korak, a recept je prosjek sva četiri.</p>
+  </div>
+
+  <div class="chart">
+    <div class="ct">6. Što klasifikator ne može</div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+      <div class="card"><div class="n">JEDAN p ZA CIJELI DAN</div><p>Ne zna koji će se sati gasiti. Raspored po satima dolazi samo iz r, koji je isti za svaki dan gašenja. Zato promašujemo oko 20 % sati gašenja i režemo oko 2,3 h viška po danu.</p></div>
+      <div class="card"><div class="n">DUBINA JE PROSJEČNA</div><p>r je prosjek prošlih dana gašenja. Stvarna dubina skače od dana do dana i u 10 h je ne znamo predvidjeti: pravila za dubinu nisu prošla (najbolje +0,058).</p></div>
+      <div class="card"><div class="n">RADNI DANI</div><p>Gašenje radnim danom je rijetko (11 dana u godini) i model ga uglavnom ne vidi: uhvatio je 3 od 11 dana. Na slobodnim danima uhvatio je 32 od 39.</p></div>
+      <div class="card"><div class="n">GORNJA GRANICA</div><p>I savršen klasifikator (točno zna koji je dan gašenja) spustio bi grešku za samo oko 0,2 boda. Veći dio razlike prema HOPS-u je u dubini i satima gašenja, koje u 10 h ne znamo.</p></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+      <div class="clf-tile"><div class="v">0,96</div><div class="l">AUC na test-godini</div></div>
+      <div class="clf-tile"><div class="v">80 %</div><div class="l">preciznost: kad kaže „gasi se” (p &gt; 0,5), točno je 35 od 44 puta</div></div>
+      <div class="clf-tile"><div class="v">70 %</div><div class="l">odziv: od 50 dana gašenja uhvatio je 35</div></div>
+    </div>
+    <p class="note">Detaljna točnost (kalibracija, mjeseci, radni dani, dubina, sati) je u tabu <button type="button" class="btn small" data-goto="dij">Dijagnostika</button>.</p>
+  </div>
+</section>
+</div>
 <div id="tab-dij" role="tabpanel" hidden>
 <section id="dijagnostika" data-nav="Dijagnostika">
   <div class="eyebrow">Dijagnostika modela</div>
@@ -1593,6 +1656,55 @@ function drawHopsDay(id, D){
     hover(hit, `<b>${hh}:00–${hh + 1}:00</b><br>objavljeno ${fmt(D.a[i], 0)} MW<br>HOPS ${fmt(D.p[i], 0)} MW<br>naša (10 h) ${fmt(D.o[i], 0)} MW`); });
 }
 DRAW.push(() => { drawHopsDay('c-hd1', HD.d1); drawHopsDay('c-hd2', HD.d2); });
+/* ---------- tab Klasifikator (2026-11-25): r per hour from the test-year dumps, demo base on 35 days with p > 0.8 ---------- */
+const KLF = {
+  h: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+  r: {enet: [1, 1, .94, .98, .98, .86, .71, .66, .67, .66, .67, .92, .93, 1, 1],
+      et:   [1, 1, .92, 1, 1, .94, .74, .68, .67, .64, .66, .93, .94, 1, 1],
+      lgbm: [1, 1, .91, 1, 1, .98, .78, .70, .70, .70, .74, .94, .96, 1, 1]},
+  base: [0.7, 6.7, 25.1, 48.6, 62.9, 65.9, 64.6, 62.2, 58.3, 55.8, 53.7, 49.9, 38.9, 18.8, 5.0]
+};
+KLF.rm = KLF.h.map((_, i) => (KLF.r.enet[i] + KLF.r.et[i] + KLF.r.lgbm[i]) / 3);
+function drawKlfR(){
+  if (!document.getElementById('c-klf-r')) return;
+  const h = 230, top = 14, bottom = 34, left = 44, right = 10; const [s, w] = svgIn('c-klf-r', h);
+  const n = KLF.h.length, bw = (w - left - right) / n, y = scale(0, 1, h - bottom, top);
+  gridY(s, y, left, w - right, [0, .25, .5, .75, 1], t => fmt(t, 2));
+  KLF.h.forEach((hh, i) => {
+    const v = KLF.rm[i], x0 = left + i * bw + 3, cut = v < 0.999;
+    el('rect', {x: x0, y: y(v), width: bw - 6, height: y(0) - y(v), rx: 3, fill: css(cut ? '--band' : '--ref'), opacity: cut ? 0.85 : 0.45}, s);
+    txt(s, x0 + (bw - 6) / 2, h - bottom + 16, hh + ' h', 'ax', 'middle');
+    if (cut && v < 0.9) txt(s, x0 + (bw - 6) / 2, y(v) - 5, fmt(v, 2), 'lbl', 'middle');
+    const hit = el('rect', {x: left + i * bw, y: top, width: bw, height: h - top - bottom, fill: 'transparent'}, s);
+    hover(hit, `<b>${hh}:00–${hh + 1}:00</b><br>r prosjek ${fmt(v, 2)} → puni rez ${fmt((1 - v) * 100, 0)} %<br>ET ${fmt(KLF.r.et[i], 2)} · LightGBM ${fmt(KLF.r.lgbm[i], 2)} · ElasticNet ${fmt(KLF.r.enet[i], 2)}`);
+  });
+}
+function drawKlfDemo(){
+  if (!document.getElementById('c-klf-demo')) return;
+  const inp = document.getElementById('klf-p'), p = +inp.value;
+  document.getElementById('klf-pv').textContent = fmt(p, 2);
+  const pred = KLF.base.map((b, i) => b * (1 - p * (1 - KLF.rm[i])));
+  const i13 = KLF.h.indexOf(13);
+  document.getElementById('klf-read').textContent = `u 13 h: baza ${fmt(KLF.base[i13], 1)} %, prognoza ${fmt(pred[i13], 1)} % (rez ${fmt(p * (1 - KLF.rm[i13]) * 100, 0)} %)`;
+  const h = 280, top = 14, bottom = 34, left = 44, right = 14; const [s, w] = svgIn('c-klf-demo', h);
+  const x = scale(KLF.h[0], KLF.h[KLF.h.length - 1], left, w - right), y = scale(0, 70, h - bottom, top);
+  gridY(s, y, left, w - right, [0, 20, 40, 60], t => t + ' %');
+  KLF.h.forEach(hh => { if (hh % 2 === 1) txt(s, x(hh), h - bottom + 16, hh + ' h', 'ax', 'middle'); });
+  const pts = a => a.map((v, i) => `${x(KLF.h[i])},${y(v)}`).join(' ');
+  el('polygon', {points: pts(KLF.base) + ' ' + pts(pred).split(' ').reverse().join(' '), fill: css('--band'), opacity: 0.18}, s);
+  el('polyline', {points: pts(KLF.base), fill: 'none', stroke: css('--ref'), 'stroke-width': 2, 'stroke-dasharray': '5 4'}, s);
+  el('polyline', {points: pts(pred), fill: 'none', stroke: css('--ours'), 'stroke-width': 2.5}, s);
+  const lx = left + 8; [['--ref', 'baza (bez reza)', true], ['--ours', 'prognoza nakon reza', false], ['--band', 'rez', null]].forEach(([c, l, d], k) => {
+    const yy = top + 6 + k * 18;
+    if (d === null) el('rect', {x: lx, y: yy - 5, width: 22, height: 10, fill: css(c), opacity: 0.3}, s);
+    else el('line', {x1: lx, x2: lx + 22, y1: yy, y2: yy, stroke: css(c), 'stroke-width': 2.5, 'stroke-dasharray': d ? '5 4' : ''}, s);
+    txt(s, lx + 28, yy + 4, l, 'lbl'); });
+  const step = x(KLF.h[1]) - x(KLF.h[0]);
+  KLF.h.forEach((hh, i) => { const hit = el('rect', {x: x(hh) - step / 2, y: top, width: step, height: h - top - bottom, fill: 'transparent'}, s);
+    hover(hit, () => `<b>${hh}:00–${hh + 1}:00</b><br>baza ${fmt(KLF.base[i], 1)} %<br>r ${fmt(KLF.rm[i], 2)}, rez p·(1−r) = ${fmt(+inp.value * (1 - KLF.rm[i]) * 100, 0)} %<br>prognoza ${fmt(KLF.base[i] * (1 - +inp.value * (1 - KLF.rm[i])), 1)} %`); });
+}
+(() => { const inp = document.getElementById('klf-p'); if (inp) inp.addEventListener('input', drawKlfDemo); })();
+DRAW.push(drawKlfR, drawKlfDemo);
 document.querySelectorAll('.info[data-tip]').forEach(n => { n.addEventListener('mousemove', e => showTip(e, n.dataset.tip)); n.addEventListener('mouseleave', hideTip); });
 function drawAll(){ DRAW.forEach(f => f()); if (!drawer.hidden && document.getElementById('c-cliper')) { drawCliper(); drawSimpleRefs(); drawRefs(); } if (!drawer.hidden && document.getElementById('c-nmae')) drawNmae(); }
 drawAll();
@@ -1610,6 +1722,5 @@ const mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) 
 new MutationObserver(drawAll).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
 })();
 </script>
-
 </body>
 </html>
